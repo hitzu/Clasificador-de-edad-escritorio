@@ -173,10 +173,12 @@ public class escritorio extends javax.swing.JFrame {
         *///prueba exitosa
         
         //empezando con lo nuevo y verdadero cargar las imagenes en una lista ligada
-        LinkedList<Mat> imagenes = new LinkedList<Mat>();
+        LinkedList<Mat> menores = new LinkedList<Mat>();
+        LinkedList<Mat> mayores = new LinkedList<Mat>();
         Mat aux;
         Imshow image = new Imshow("Imagen");
         Imshow image1 = new Imshow("Imagen");
+        String[] separador;
         if(fichero == null)
         {
             JOptionPane.showMessageDialog(jPanel1, "Selecciona un archivo", "Error", JOptionPane.ERROR_MESSAGE);
@@ -189,13 +191,22 @@ public class escritorio extends javax.swing.JFrame {
                 String cadena;
                 while((cadena = br.readLine())!=null)
                 {   
-                    jTextArea1.setText(jTextArea1.getText() + cadena + "\n");
-                    aux = Highgui.imread(cadena, Highgui.CV_LOAD_IMAGE_GRAYSCALE);
+                    //jTextArea1.setText(jTextArea1.getText() + cadena + "\n");
+                    separador = cadena.split(",");
+                    aux = Highgui.imread(separador[0], Highgui.CV_LOAD_IMAGE_GRAYSCALE);
                     Imgproc.equalizeHist(aux, aux);
                     
                     Size sz = new Size(211,211);
                     Imgproc.resize(aux, aux, sz);
-                    imagenes.add( aux );
+                    
+                    if(Integer.parseInt(separador[1]) == 0)
+                    {
+                        menores.add( aux );
+                    }
+                    else
+                    {
+                        mayores.add( aux );
+                    }
                 }
             }
             catch(Exception e)
@@ -205,8 +216,8 @@ public class escritorio extends javax.swing.JFrame {
             }
         }
         jTextArea1.setText( jTextArea1.getText() + "Carga de imagenes completa");
-        image.showImage(imagenes.getFirst());
-        image1.showImage(imagenes.getLast());
+        image.showImage(menores.getFirst());
+        image1.showImage(mayores.getFirst());
     }//GEN-LAST:event_jButton1ActionPerformed
 
     /**

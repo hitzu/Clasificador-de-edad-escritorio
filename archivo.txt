@@ -1,0 +1,2 @@
+C:\Users\Hitzu\Documents\proyectosQT\clasificador\train\001A02.jpg,0
+C:\Users\Hitzu\Documents\proyectosQT\clasificador\train\001A33.jpg,1
