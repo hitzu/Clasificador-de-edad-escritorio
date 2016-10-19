@@ -138,6 +138,12 @@ public class escritorio extends javax.swing.JFrame {
         
     }//GEN-LAST:event_jButton2ActionPerformed
 
+    public String[] split(String cadena)
+    {
+        String[] separador = cadena.split(",");
+        return separador;
+    }
+    
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
         //Se debe de recorrer el archivo ingresando todo en una matriz de elementos
@@ -173,8 +179,8 @@ public class escritorio extends javax.swing.JFrame {
         *///prueba exitosa
         
         //empezando con lo nuevo y verdadero cargar las imagenes en una lista ligada
-        LinkedList<Mat> menores = new LinkedList<Mat>();
-        LinkedList<Mat> mayores = new LinkedList<Mat>();
+        LinkedList<Mat> imagenes = new LinkedList<Mat>();
+        LinkedList<String> etiquetas = new LinkedList<String>();
         Mat aux;
         Imshow image = new Imshow("Imagen");
         Imshow image1 = new Imshow("Imagen");
@@ -192,21 +198,14 @@ public class escritorio extends javax.swing.JFrame {
                 while((cadena = br.readLine())!=null)
                 {   
                     //jTextArea1.setText(jTextArea1.getText() + cadena + "\n");
-                    separador = cadena.split(",");
+                    separador = split(cadena);
                     aux = Highgui.imread(separador[0], Highgui.CV_LOAD_IMAGE_GRAYSCALE);
                     Imgproc.equalizeHist(aux, aux);
                     
                     Size sz = new Size(211,211);
                     Imgproc.resize(aux, aux, sz);
-                    
-                    if(Integer.parseInt(separador[1]) == 0)
-                    {
-                        menores.add( aux );
-                    }
-                    else
-                    {
-                        mayores.add( aux );
-                    }
+                    imagenes.add(aux);
+                    etiquetas.add(separador[1]);
                 }
             }
             catch(Exception e)
@@ -216,8 +215,8 @@ public class escritorio extends javax.swing.JFrame {
             }
         }
         jTextArea1.setText( jTextArea1.getText() + "Carga de imagenes completa");
-        image.showImage(menores.getFirst());
-        image1.showImage(mayores.getFirst());
+        image.showImage(imagenes.getFirst());
+        image1.showImage(imagenes.getLast());
     }//GEN-LAST:event_jButton1ActionPerformed
 
     /**
