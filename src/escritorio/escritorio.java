@@ -15,9 +15,15 @@ import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfRect;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
 import org.opencv.highgui.Highgui;
 import org.opencv.core.Size;
+import org.opencv.core.Point;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CascadeClassifier;
+import static org.opencv.objdetect.Objdetect.CASCADE_SCALE_IMAGE;
 
 /**
  *
@@ -178,13 +184,19 @@ public class escritorio extends javax.swing.JFrame {
         image.showImage(frame);
         *///prueba exitosa
         
+        //cargando la biblioteca
+        CascadeClassifier detectorRostros = new CascadeClassifier("C://opencv//sources//data//haarcascades//haarcascade_frontalface_alt2.xml");
+        
         //empezando con lo nuevo y verdadero cargar las imagenes en una lista ligada
         LinkedList<Mat> imagenes = new LinkedList<Mat>();
         LinkedList<String> etiquetas = new LinkedList<String>();
-        Mat aux;
+        Mat aux,faceROI;
         Imshow image = new Imshow("Imagen");
         Imshow image1 = new Imshow("Imagen");
+        MatOfRect rostros = new MatOfRect();
         String[] separador;
+        Rect[] facesArray;
+        
         if(fichero == null)
         {
             JOptionPane.showMessageDialog(jPanel1, "Selecciona un archivo", "Error", JOptionPane.ERROR_MESSAGE);
@@ -197,13 +209,25 @@ public class escritorio extends javax.swing.JFrame {
                 String cadena;
                 while((cadena = br.readLine())!=null)
                 {   
-                    //jTextArea1.setText(jTextArea1.getText() + cadena + "\n");
                     separador = split(cadena);
                     aux = Highgui.imread(separador[0], Highgui.CV_LOAD_IMAGE_GRAYSCALE);
                     Imgproc.equalizeHist(aux, aux);
                     
+                    detectorRostros.detectMultiScale(aux, rostros, 1.1, 2, 0|CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(aux.height(), aux.width() ) );
+                    facesArray = rostros.toArray();
+                    
+                    faceROI = aux.submat(facesArray[0]);
+                    //dibujarlas
+                    /*for(int i = 0; i < facesArray.length; i++)
+                    {
+                        Core.rectangle(aux,
+                        new Point(facesArray[i].x,facesArray[i].y),
+                        new Point(facesArray[i].x+facesArray[i].width,facesArray[i].y+facesArray[i].height),
+                        new Scalar(123, 213, 23, 220));
+                    }*/
+                    
                     Size sz = new Size(211,211);
-                    Imgproc.resize(aux, aux, sz);
+                    Imgproc.resize(faceROI, aux, sz);
                     imagenes.add(aux);
                     etiquetas.add(separador[1]);
                 }
