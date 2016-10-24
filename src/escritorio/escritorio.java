@@ -33,12 +33,129 @@ public class escritorio extends javax.swing.JFrame {
     
     //variables globales del programa
      File fichero = null;      
+     LinkedList<Mat> imagenes = new LinkedList<Mat>();
+     LinkedList<String> etiquetas = new LinkedList<String>();
 
     /**
      * Creates new form escritorio
      */
     public escritorio() {
         initComponents();
+    }
+    
+    
+    
+    public void ShowFileChoose()
+    {
+        JFileChooser fc = new JFileChooser();
+        FileNameExtensionFilter filtro = new FileNameExtensionFilter("*.TXT", "txt");
+        fc.setFileFilter(filtro);
+        int seleccion = fc.showOpenDialog(jPanel1);
+        
+        if(seleccion == JFileChooser.APPROVE_OPTION) 
+        {
+            
+            fichero = fc.getSelectedFile();
+            ruta.setText(fichero.getAbsolutePath());
+        }
+    }
+    
+    public void ReadFile()
+    {
+        Mat aux,faceROI;        
+        String[] separador;
+        try
+            {
+                BufferedReader br = new BufferedReader (new FileReader (fichero));
+                String cadena;
+                while((cadena = br.readLine())!=null)
+                {   
+                    separador = split(cadena);
+                    aux = Highgui.imread(separador[0], Highgui.CV_LOAD_IMAGE_COLOR);
+                    if(isFace(aux))
+                    {
+                        aux = DetectFace(aux);
+                        aux = Convert2Gray(aux);
+                        faceROI = Equalize(aux);
+                        Size sz = new Size(211,211);
+                        Imgproc.resize(faceROI, aux, sz);
+                        FillVectors(aux,separador[1]);
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                JOptionPane.showMessageDialog(jPanel1, "No se pudo abrir el archivo", "Error", JOptionPane.ERROR_MESSAGE);
+                System.out.println("Error: " + e.toString());
+            }
+    }
+    
+    public String[] split(String cadena)
+    {
+        String[] separador = cadena.split(",");
+        return separador;
+    }
+    
+    public void FillVectors(Mat imagen,String clase)
+    {
+        imagenes.add(imagen);
+        etiquetas.add(clase);
+    }
+    
+    public Mat DetectFace(Mat aux)
+    {
+        //cargando el clasificador en cascada para la deteccion de rostros
+        CascadeClassifier detectorRostros = new CascadeClassifier("C://opencv//sources//data//haarcascades//haarcascade_frontalface_alt2.xml");
+        Rect[] facesArray;
+        MatOfRect rostros = new MatOfRect();
+        Mat faceROI;
+        
+        detectorRostros.detectMultiScale(aux, rostros, 1.1, 2, 0|CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(aux.height(), aux.width() ) );
+        facesArray = rostros.toArray();
+
+        faceROI = aux.submat(facesArray[0]);
+        //dibujarlas
+        /*for(int i = 0; i < facesArray.length; i++)
+        {
+            Core.rectangle(aux,
+            new Point(facesArray[i].x,facesArray[i].y),
+            new Point(facesArray[i].x+facesArray[i].width,facesArray[i].y+facesArray[i].height),
+            new Scalar(123, 213, 23, 220));
+        }*/
+        return faceROI;
+    }
+    
+    public boolean isFace(Mat imagen)
+    {
+        //cargando el clasificador en cascada para la deteccion de rostros
+        CascadeClassifier detectorRostros = new CascadeClassifier("C://opencv//sources//data//haarcascades//haarcascade_frontalface_alt2.xml");
+        Rect[] facesArray;
+        MatOfRect rostros = new MatOfRect();
+        
+        detectorRostros.detectMultiScale(imagen, rostros, 1.1, 2, 0|CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(imagen.height(), imagen.width() ) );
+        facesArray = rostros.toArray();
+        if(facesArray.length >= 1)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    
+    public Mat Convert2Gray(Mat imagen)
+    {
+        Mat aux = new Mat();
+        Imgproc.cvtColor(imagen, aux, Imgproc.COLOR_BGR2GRAY);
+        return aux;
+    }
+    
+    public Mat Equalize(Mat imagen)
+    {
+        Mat aux = new Mat();
+        Imgproc.equalizeHist(imagen, aux);
+        return aux;
     }
 
     /**
@@ -130,72 +247,13 @@ public class escritorio extends javax.swing.JFrame {
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         // TODO add your handling code here:
-        JFileChooser fc = new JFileChooser();
-        FileNameExtensionFilter filtro = new FileNameExtensionFilter("*.TXT", "txt");
-        fc.setFileFilter(filtro);
-        int seleccion = fc.showOpenDialog(jPanel1);
-        
-        if(seleccion == JFileChooser.APPROVE_OPTION) 
-        {
-            fichero = fc.getSelectedFile();
-            ruta.setText(fichero.getAbsolutePath());
-        }
-        
-        
+        ShowFileChoose();
     }//GEN-LAST:event_jButton2ActionPerformed
 
-    public String[] split(String cadena)
-    {
-        String[] separador = cadena.split(",");
-        return separador;
-    }
+    
     
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
-        //Se debe de recorrer el archivo ingresando todo en una matriz de elementos
-        
-        /*como prueba se cargara un archivo con una imagen para mostrarla en un panel
-        
-        Mat frame = new Mat();
-        Imshow image = new Imshow("Imagen");
-        if(fichero==null)
-        {
-            JOptionPane.showMessageDialog(jPanel1, "Selecciona un archivo", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-        else
-        {
-            try
-            {
-                BufferedReader br = new BufferedReader (new FileReader (fichero));
-                String cadena;
-                while((cadena = br.readLine())!=null)
-                {   
-                    //jTextArea1.setText(jTextArea1.getText() + cadena + "\n");
-                    frame = Highgui.imread(cadena, Highgui.CV_LOAD_IMAGE_COLOR);
-                }
-            }
-            catch(Exception e)
-            {
-                JOptionPane.showMessageDialog(jPanel1, "No se pudo abrir el archivo", "Error", JOptionPane.ERROR_MESSAGE);
-                System.out.println("Error: " + e.toString());
-            }
-        }
-        jTextArea1.setText( jTextArea1.getText() + "Carga de imagenes completa");
-        image.showImage(frame);
-        *///prueba exitosa
-        
-        //cargando la biblioteca
-        CascadeClassifier detectorRostros = new CascadeClassifier("C://opencv//sources//data//haarcascades//haarcascade_frontalface_alt2.xml");
-        
-        //empezando con lo nuevo y verdadero cargar las imagenes en una lista ligada
-        LinkedList<Mat> imagenes = new LinkedList<Mat>();
-        LinkedList<String> etiquetas = new LinkedList<String>();
-        Mat aux,faceROI;
-        Imshow image = new Imshow("Imagen");
-        Imshow image1 = new Imshow("Imagen");
-        MatOfRect rostros = new MatOfRect();
-        String[] separador;
-        Rect[] facesArray;
         
         if(fichero == null)
         {
@@ -203,44 +261,11 @@ public class escritorio extends javax.swing.JFrame {
         }
         else
         {
-            try
-            {
-                BufferedReader br = new BufferedReader (new FileReader (fichero));
-                String cadena;
-                while((cadena = br.readLine())!=null)
-                {   
-                    separador = split(cadena);
-                    aux = Highgui.imread(separador[0], Highgui.CV_LOAD_IMAGE_GRAYSCALE);
-                    Imgproc.equalizeHist(aux, aux);
-                    
-                    detectorRostros.detectMultiScale(aux, rostros, 1.1, 2, 0|CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(aux.height(), aux.width() ) );
-                    facesArray = rostros.toArray();
-                    
-                    faceROI = aux.submat(facesArray[0]);
-                    //dibujarlas
-                    /*for(int i = 0; i < facesArray.length; i++)
-                    {
-                        Core.rectangle(aux,
-                        new Point(facesArray[i].x,facesArray[i].y),
-                        new Point(facesArray[i].x+facesArray[i].width,facesArray[i].y+facesArray[i].height),
-                        new Scalar(123, 213, 23, 220));
-                    }*/
-                    
-                    Size sz = new Size(211,211);
-                    Imgproc.resize(faceROI, aux, sz);
-                    imagenes.add(aux);
-                    etiquetas.add(separador[1]);
-                }
-            }
-            catch(Exception e)
-            {
-                JOptionPane.showMessageDialog(jPanel1, "No se pudo abrir el archivo", "Error", JOptionPane.ERROR_MESSAGE);
-                System.out.println("Error: " + e.toString());
-            }
+            ReadFile();
         }
         jTextArea1.setText( jTextArea1.getText() + "Carga de imagenes completa");
+        Imshow image = new Imshow("Imagen");
         image.showImage(imagenes.getFirst());
-        image1.showImage(imagenes.getLast());
     }//GEN-LAST:event_jButton1ActionPerformed
 
     /**
