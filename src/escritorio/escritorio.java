@@ -6,24 +6,39 @@
 package escritorio;
 import com.atul.JavaOpenCV.Imshow;
 import java.awt.List;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.nio.IntBuffer;
+import java.util.Iterator;
 import java.util.LinkedList;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import org.bytedeco.javacpp.helper.opencv_core;
+import static org.bytedeco.javacpp.opencv_core.CV_32SC1;
+import org.bytedeco.javacpp.opencv_core.MatVector;
+import org.bytedeco.javacpp.opencv_face.FaceRecognizer;
+import static org.bytedeco.javacpp.opencv_face.createFisherFaceRecognizer;
+import static org.bytedeco.javacpp.opencv_imgcodecs.CV_LOAD_IMAGE_GRAYSCALE;
+import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
+import org.bytedeco.javacv.Java2DFrameConverter;
+import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
-import org.opencv.highgui.Highgui;
 import org.opencv.core.Size;
 import org.opencv.core.Point;
+import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import static org.opencv.objdetect.Objdetect.CASCADE_SCALE_IMAGE;
+
+
 
 /**
  *
@@ -35,12 +50,15 @@ public class escritorio extends javax.swing.JFrame {
      File fichero = null;      
      LinkedList<Mat> imagenes = new LinkedList<Mat>();
      LinkedList<String> etiquetas = new LinkedList<String>();
+     MatVector images;
+     org.bytedeco.javacpp.opencv_core.Mat labels;
 
     /**
      * Creates new form escritorio
      */
     public escritorio() {
         initComponents();
+        JButton3.setEnabled(false);
     }
     
     
@@ -77,7 +95,7 @@ public class escritorio extends javax.swing.JFrame {
                         aux = DetectFace(aux);
                         aux = Convert2Gray(aux);
                         faceROI = Equalize(aux);
-                        Size sz = new Size(211,211);
+                        Size sz = new Size(200,200);
                         Imgproc.resize(faceROI, aux, sz);
                         FillVectors(aux,separador[1]);
                     }
@@ -157,6 +175,46 @@ public class escritorio extends javax.swing.JFrame {
         Imgproc.equalizeHist(imagen, aux);
         return aux;
     }
+    
+    public void convertMatToMat()
+    {
+        
+        //para hacer la conversion de Mat a javacv.Mat y llenar el MatVector
+        //Se realizo una conversion 
+        //Mat >> BufferedImage y luego
+        //bufferedImage >> javacv.Mat
+        BufferedImage image;
+        int type = BufferedImage.TYPE_BYTE_GRAY;
+        images = new MatVector(imagenes.size()); 
+        
+        long cont = 0;
+        for(int i = 0; i< imagenes.size(); i++)
+        {
+            //primera conversion
+            if(imagenes.get(i).channels() > 1)
+            {
+                type = BufferedImage.TYPE_3BYTE_BGR;
+            }
+            image = new BufferedImage(imagenes.get(i).cols(), imagenes.get(i).rows(), type);
+            imagenes.get(i).get(0,0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData());
+            //segunda conversion
+            OpenCVFrameConverter.ToMat cv = new OpenCVFrameConverter.ToMat(); 
+            org.bytedeco.javacpp.opencv_core.Mat resultado = cv.convertToMat(new Java2DFrameConverter().convert(image));
+            images.put(cont,resultado);
+            cont++;
+        }
+    }
+    
+    public void convertArrayIntToOpencvMat()
+    {
+        jTextArea1.setText(jTextArea1.getText() + "\n" + "tamaño de etiquetas: " + etiquetas.size());
+        labels = new org.bytedeco.javacpp.opencv_core.Mat(etiquetas.size(),1,CV_32SC1);
+        IntBuffer labelsBuf = labels.createBuffer();
+        for(int i = 0; i < etiquetas.size(); i++)
+        {
+            labelsBuf.put(i,Integer.parseInt(etiquetas.get(i)));
+        }
+    }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -174,6 +232,7 @@ public class escritorio extends javax.swing.JFrame {
         jButton2 = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTextArea1 = new javax.swing.JTextArea();
+        JButton3 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -197,36 +256,47 @@ public class escritorio extends javax.swing.JFrame {
         jTextArea1.setRows(5);
         jScrollPane1.setViewportView(jTextArea1);
 
+        JButton3.setText("Exportar modelo");
+        JButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                JButton3ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(39, 39, 39)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel1)
-                    .addComponent(ruta, javax.swing.GroupLayout.PREFERRED_SIZE, 329, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(32, Short.MAX_VALUE))
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jButton2)
-                .addGap(49, 49, 49)
-                .addComponent(jButton1)
-                .addGap(80, 80, 80))
             .addComponent(jScrollPane1)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(39, 39, 39)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel1)
+                            .addComponent(ruta, javax.swing.GroupLayout.PREFERRED_SIZE, 329, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(31, 31, 31)
+                        .addComponent(jButton2)
+                        .addGap(18, 18, 18)
+                        .addComponent(jButton1)
+                        .addGap(14, 14, 14)
+                        .addComponent(JButton3)))
+                .addContainerGap(20, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(58, 58, 58)
+                .addGap(47, 47, 47)
                 .addComponent(jLabel1)
                 .addGap(18, 18, 18)
                 .addComponent(ruta, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(26, 26, 26)
+                .addGap(29, 29, 29)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(33, 33, 33)
+                    .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(JButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(41, 41, 41)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -251,7 +321,6 @@ public class escritorio extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton2ActionPerformed
 
     
-    
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
         
@@ -264,9 +333,50 @@ public class escritorio extends javax.swing.JFrame {
             ReadFile();
         }
         jTextArea1.setText( jTextArea1.getText() + "Carga de imagenes completa");
-        Imshow image = new Imshow("Imagen");
-        image.showImage(imagenes.getFirst());
+        JButton3.setEnabled(true);
+        //Imshow image = new Imshow("Imagen");
+        //image.showImage(imagenes.getFirst());
     }//GEN-LAST:event_jButton1ActionPerformed
+
+    private void JButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_JButton3ActionPerformed
+        // TODO add your handling code here:
+        
+        convertMatToMat();
+        convertArrayIntToOpencvMat();
+        FaceRecognizer faceRecognizer = createFisherFaceRecognizer();
+        faceRecognizer.train(images, labels);
+        
+        //Probando la prueba
+        Mat test;
+        String path = "C:\\Users\\Hitzu\\Documents\\proyectosQT\\clasificador\\test\\071A27.jpg";        
+        Mat aux = Highgui.imread(path, Highgui.CV_LOAD_IMAGE_COLOR);
+        if(isFace(aux))
+        {
+            aux = DetectFace(aux);
+            aux = Convert2Gray(aux);
+            aux = Equalize(aux);
+            Size sz = new Size(200,200);
+            Imgproc.resize(aux, aux, sz);
+        }
+        
+        //algoritmo para convertir una sola imagen
+        BufferedImage image;
+        int type = BufferedImage.TYPE_BYTE_GRAY;
+
+        if(aux.channels() > 1)
+        {
+            type = BufferedImage.TYPE_3BYTE_BGR;
+        }
+        image = new BufferedImage(aux.cols(), aux.rows(), type);
+        aux.get(0,0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData());
+        //segunda conversion
+        OpenCVFrameConverter.ToMat cv = new OpenCVFrameConverter.ToMat(); 
+        org.bytedeco.javacpp.opencv_core.Mat resultado = cv.convertToMat(new Java2DFrameConverter().convert(image));
+        
+        
+        int predictedLabel = faceRecognizer.predict(resultado);
+        System.out.println("El resultado es: " + predictedLabel);
+    }//GEN-LAST:event_JButton3ActionPerformed
 
     /**
      * @param args the command line arguments
@@ -304,6 +414,7 @@ public class escritorio extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton JButton3;
     private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
