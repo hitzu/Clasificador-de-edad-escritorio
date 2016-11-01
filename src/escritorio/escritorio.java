@@ -12,18 +12,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.nio.IntBuffer;
-import java.util.Iterator;
 import java.util.LinkedList;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import org.bytedeco.javacpp.helper.opencv_core;
 import static org.bytedeco.javacpp.opencv_core.CV_32SC1;
 import org.bytedeco.javacpp.opencv_core.MatVector;
 import org.bytedeco.javacpp.opencv_face.FaceRecognizer;
 import static org.bytedeco.javacpp.opencv_face.createFisherFaceRecognizer;
-import static org.bytedeco.javacpp.opencv_imgcodecs.CV_LOAD_IMAGE_GRAYSCALE;
-import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
+import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.opencv.core.Core;
@@ -38,12 +35,11 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import static org.opencv.objdetect.Objdetect.CASCADE_SCALE_IMAGE;
 
-
-
 /**
  *
  * @author Hitzu
  */
+
 public class escritorio extends javax.swing.JFrame {
     
     //variables globales del programa
@@ -53,16 +49,17 @@ public class escritorio extends javax.swing.JFrame {
      MatVector images;
      org.bytedeco.javacpp.opencv_core.Mat labels;
 
-    /**
-     * Creates new form escritorio
-     */
-    public escritorio() {
+    
+    public escritorio() 
+    {
+        /**
+        * Creates new form escritorio
+        */
         initComponents();
+        this.setTitle("Actualizar modelo de datos");
         JButton3.setEnabled(false);
     }
-    
-    
-    
+         
     public void ShowFileChoose()
     {
         JFileChooser fc = new JFileChooser();
@@ -152,14 +149,7 @@ public class escritorio extends javax.swing.JFrame {
         
         detectorRostros.detectMultiScale(imagen, rostros, 1.1, 2, 0|CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(imagen.height(), imagen.width() ) );
         facesArray = rostros.toArray();
-        if(facesArray.length >= 1)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+         return facesArray.length >= 1;
     }
     
     public Mat Convert2Gray(Mat imagen)
@@ -178,7 +168,6 @@ public class escritorio extends javax.swing.JFrame {
     
     public void convertMatToMat()
     {
-        
         //para hacer la conversion de Mat a javacv.Mat y llenar el MatVector
         //Se realizo una conversion 
         //Mat >> BufferedImage y luego
@@ -203,24 +192,68 @@ public class escritorio extends javax.swing.JFrame {
             images.put(cont,resultado);
             cont++;
         }
+        //mostrar imagenes
+        /*long uno = 1;
+        long cero = 0;
+        CanvasFrame canvas = new CanvasFrame("imagen1", 1.0);
+        final OpenCVFrameConverter converter = new OpenCVFrameConverter.ToMat();
+        canvas.showImage(converter.convert(images.get(cero)));
+        CanvasFrame canvas1 = new CanvasFrame("imagen2", 1.0);
+        final OpenCVFrameConverter converter1 = new OpenCVFrameConverter.ToMat();
+        canvas1.showImage(converter1.convert(images.get(uno)));*/
     }
     
     public void convertArrayIntToOpencvMat()
     {
-        jTextArea1.setText(jTextArea1.getText() + "\n" + "tamaño de etiquetas: " + etiquetas.size());
         labels = new org.bytedeco.javacpp.opencv_core.Mat(etiquetas.size(),1,CV_32SC1);
         IntBuffer labelsBuf = labels.createBuffer();
         for(int i = 0; i < etiquetas.size(); i++)
         {
             labelsBuf.put(i,Integer.parseInt(etiquetas.get(i)));
+        }   
+    }
+    
+    public void CreateAndExportModel()
+    {
+        FaceRecognizer faceRecognizer = createFisherFaceRecognizer();
+        faceRecognizer.train(images, labels);
+        faceRecognizer.save("Eigenfaces.yml");
+        jTextArea1.setText(jTextArea1.getText() + "\n" + "Archivo guardado en " + System.getProperty("user.dir")+ ".Eigenfaces.yml");
+    }
+    
+    public void probando()
+    {
+        //Probando la prueba
+        String path = "C:\\Users\\Hitzu\\Documents\\proyectosQT\\clasificador\\train\\001A43b.jpg";
+        Mat aux = Highgui.imread(path, Highgui.CV_LOAD_IMAGE_COLOR);
+        if(isFace(aux))
+        {
+            aux = DetectFace(aux);
+            aux = Convert2Gray(aux);
+            aux = Equalize(aux);
+            Size sz = new Size(200,200);
+            Imgproc.resize(aux, aux, sz);
         }
+        
+        //algoritmo para convertir una sola imagen
+        BufferedImage image;
+        int type = BufferedImage.TYPE_BYTE_GRAY;
+
+        if(aux.channels() > 1)
+        {
+            type = BufferedImage.TYPE_3BYTE_BGR;
+        }
+        image = new BufferedImage(aux.cols(), aux.rows(), type);
+        aux.get(0,0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData());
+        //segunda conversion
+        OpenCVFrameConverter.ToMat cv = new OpenCVFrameConverter.ToMat(); 
+        org.bytedeco.javacpp.opencv_core.Mat resultado = cv.convertToMat(new Java2DFrameConverter().convert(image));
+        FaceRecognizer faceRecognizer1 = createFisherFaceRecognizer();
+        faceRecognizer1.load("C:\\Users\\Hitzu\\Documents\\eigenfaces_at.yml");
+        int predictedLabel = faceRecognizer1.predict(resultado);
+        jTextArea1.setText(jTextArea1.getText() + "\n" + "El resultado es: " + predictedLabel);
     }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -320,7 +353,6 @@ public class escritorio extends javax.swing.JFrame {
         ShowFileChoose();
     }//GEN-LAST:event_jButton2ActionPerformed
 
-    
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
         
@@ -340,47 +372,12 @@ public class escritorio extends javax.swing.JFrame {
 
     private void JButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_JButton3ActionPerformed
         // TODO add your handling code here:
-        
         convertMatToMat();
         convertArrayIntToOpencvMat();
-        FaceRecognizer faceRecognizer = createFisherFaceRecognizer();
-        faceRecognizer.train(images, labels);
-        
-        //Probando la prueba
-        Mat test;
-        String path = "C:\\Users\\Hitzu\\Documents\\proyectosQT\\clasificador\\test\\071A27.jpg";        
-        Mat aux = Highgui.imread(path, Highgui.CV_LOAD_IMAGE_COLOR);
-        if(isFace(aux))
-        {
-            aux = DetectFace(aux);
-            aux = Convert2Gray(aux);
-            aux = Equalize(aux);
-            Size sz = new Size(200,200);
-            Imgproc.resize(aux, aux, sz);
-        }
-        
-        //algoritmo para convertir una sola imagen
-        BufferedImage image;
-        int type = BufferedImage.TYPE_BYTE_GRAY;
-
-        if(aux.channels() > 1)
-        {
-            type = BufferedImage.TYPE_3BYTE_BGR;
-        }
-        image = new BufferedImage(aux.cols(), aux.rows(), type);
-        aux.get(0,0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData());
-        //segunda conversion
-        OpenCVFrameConverter.ToMat cv = new OpenCVFrameConverter.ToMat(); 
-        org.bytedeco.javacpp.opencv_core.Mat resultado = cv.convertToMat(new Java2DFrameConverter().convert(image));
-        
-        
-        int predictedLabel = faceRecognizer.predict(resultado);
-        System.out.println("El resultado es: " + predictedLabel);
+        CreateAndExportModel();
+        //probando();
     }//GEN-LAST:event_JButton3ActionPerformed
-
-    /**
-     * @param args the command line arguments
-     */
+    
     public static void main(String args[]) {
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
