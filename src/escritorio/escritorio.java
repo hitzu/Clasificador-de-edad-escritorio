@@ -4,8 +4,13 @@
  * and open the template in the editor.
  */
 package escritorio;
+/*descomentar si quieres mostrar imagen o mostrar las caras 
+con los recuadros del rostro
 import com.atul.JavaOpenCV.Imshow;
-import java.awt.List;
+import org.bytedeco.javacv.CanvasFrame;
+import org.opencv.core.Scalar;
+import org.opencv.core.Point;
+*/
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.BufferedReader;
@@ -20,16 +25,13 @@ import static org.bytedeco.javacpp.opencv_core.CV_32SC1;
 import org.bytedeco.javacpp.opencv_core.MatVector;
 import org.bytedeco.javacpp.opencv_face.FaceRecognizer;
 import static org.bytedeco.javacpp.opencv_face.createFisherFaceRecognizer;
-import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.core.Point;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
@@ -49,7 +51,6 @@ public class escritorio extends javax.swing.JFrame {
      MatVector images;
      org.bytedeco.javacpp.opencv_core.Mat labels;
 
-    
     public escritorio() 
     {
         /**
