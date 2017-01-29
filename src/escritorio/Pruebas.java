@@ -10,11 +10,11 @@ import com.atul.JavaOpenCV.Imshow;
 import java.awt.image.DataBufferByte;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -40,173 +40,100 @@ import static org.opencv.objdetect.Objdetect.CASCADE_SCALE_IMAGE;
  */
 public class Pruebas extends javax.swing.JPanel {
 
-    String ruta_archivo = null;
-    String ruta_imagen = null;
+    List<Integer> edades;
+    String ruta_cascada_detecta_rostros = "C://opencv//sources//data//haarcascades//haarcascade_frontalface_alt2.xml";
+    opencv_face.FaceRecognizer faceRecognizer = createFisherFaceRecognizer();
     /**
      * Creates new form Pruebas
      */
     public Pruebas() {
         initComponents();
+        jButton1.setEnabled(false);
+        jButton2.setEnabled(false);
+        jButton4.setEnabled(false);
     }
-
-    public void probando_imagen(String path)
+    
+    public List<Integer> CalculaEdad(String path)
     {
         Mat aux = Highgui.imread(path, Highgui.CV_LOAD_IMAGE_COLOR);
-        if(isFace(aux))
+        Mat[] rostros = null;
+        edades = new ArrayList<Integer>();
+        Size sz = new Size(200,200);
+        BufferedImage image;
+        int type = BufferedImage.TYPE_BYTE_GRAY;
+        if(DetectaRostros(aux) > 0)
         {
-            aux = DetectFace(aux);
-            aux = Convert2Gray(aux);
-            aux = Equalize(aux);
-            Size sz = new Size(200,200);
-            Imgproc.resize(aux, aux, sz);
-
-            //algoritmo para convertir una sola imagen
-            BufferedImage image;
-            int type = BufferedImage.TYPE_BYTE_GRAY;
-
-            if(aux.channels() > 1)
+            rostros = DetectMultiFace(aux);
+            for(int i = 0; i < rostros.length; i++)
             {
-                type = BufferedImage.TYPE_3BYTE_BGR;
-            }
-            image = new BufferedImage(aux.cols(), aux.rows(), type);
-            aux.get(0,0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData());
-            //segunda conversion
-            OpenCVFrameConverter.ToMat cv = new OpenCVFrameConverter.ToMat(); 
-            org.bytedeco.javacpp.opencv_core.Mat resultado = cv.convertToMat(new Java2DFrameConverter().convert(image));
-            opencv_face.FaceRecognizer faceRecognizer1 = createFisherFaceRecognizer();
-            faceRecognizer1.load(ruta.getText());
-            int predictedLabel = faceRecognizer1.predict(resultado);
-            jTextArea1.setText(jTextArea1.getText() + "El archivo: " + path + " obtuvo una edad estimada de: " + predictedLabel + "\n");
-        }
-        else
-        {
-            jTextArea1.setText(jTextArea1.getText() + "No se detecto un rostro en la imagen");
-        }
-        Imshow image = new Imshow("Imagen");
-        image.showImage(aux);
-    }
-    
-    public void probando_archivo(String path) throws FileNotFoundException, IOException
-    {
-        //Probando la prueba
-        int mayores = 0;
-        int menores = 0;
-        int aciertos = 0;
-        String cadena;
-        FileReader f = new FileReader(path);
-        BufferedReader b = new BufferedReader(f);
-        String[] separador;
-        int suma, contador;
-        contador = 0; suma = 0;
-        while((cadena = b.readLine())!=null)
-        {
-            separador = cadena.split(",");
-            Mat aux = Highgui.imread(separador[0], Highgui.CV_LOAD_IMAGE_COLOR);
-            if(isFace(aux))
-            {
-                aux = DetectFace(aux);
-                aux = Convert2Gray(aux);
-                aux = Equalize(aux);
-                Size sz = new Size(200,200);
-                Imgproc.resize(aux, aux, sz);
-
-                //algoritmo para convertir una sola imagen
-                BufferedImage image;
-                int type = BufferedImage.TYPE_BYTE_GRAY;
-
-                if(aux.channels() > 1)
-                {
+                rostros[i] = Convert2Gray_Equalize(rostros[i]);
+                Imgproc.resize(rostros[i], rostros[i], sz);
+                
+                if(rostros[i].channels() > 1)
                     type = BufferedImage.TYPE_3BYTE_BGR;
-                }
-                image = new BufferedImage(aux.cols(), aux.rows(), type);
-                aux.get(0,0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData());
-                //segunda conversion
+                
+                image = new BufferedImage(rostros[i].cols(), rostros[i].rows(), type);
+                rostros[i].get(0,0, ((DataBufferByte)image.getRaster().getDataBuffer()).getData());
+                
                 OpenCVFrameConverter.ToMat cv = new OpenCVFrameConverter.ToMat(); 
                 org.bytedeco.javacpp.opencv_core.Mat resultado = cv.convertToMat(new Java2DFrameConverter().convert(image));
-                opencv_face.FaceRecognizer faceRecognizer1 = createFisherFaceRecognizer();
-                //faceRecognizer1.load("C:\\Users\\Hitzu\\Documents\\Eigenfaces.yml");
-                faceRecognizer1.load(ruta.getText());
-                int predictedLabel = faceRecognizer1.predict(resultado);
-                jTextArea1.setText(jTextArea1.getText() + "La edad real es: " + separador[1] + " El resultado estimado es: " + predictedLabel + "\n");
-                suma += Math.abs(predictedLabel - Integer.parseInt(separador[1]));
-                if(Integer.parseInt(separador[1]) < 18)
-                {
-                    menores++;
-                    if(predictedLabel < 18)
-                        aciertos++;
-                }
-                else if(Integer.parseInt(separador[1]) > 18)
-                {
-                    mayores++;
-                    if(predictedLabel > 18)
-                    {
-                        aciertos++;
-                    }
-                }
-                contador++;
+                
+                edades.add(faceRecognizer.predict(resultado));
             }
-            else
-            {
-                jTextArea1.setText(jTextArea1.getText() + "No existe un rostro en la imagen" + "\n");
-            }
-        }   
-        jTextArea1.setText(jTextArea1.getText() + "La diferencia promedio es de: " + suma/contador + "\n");
-        jTextArea1.setText(jTextArea1.getText() + "El sistema tiene una confiabilidad del: " + (aciertos*100)/contador + " al diferenciar la mayoria o minoria de edad\n");
+        }
+        return edades;
     }
     
-    public boolean isFace(Mat imagen)
+    public int DetectaRostros(Mat imagen)
     {
-        //cargando el clasificador en cascada para la deteccion de rostros
-        CascadeClassifier detectorRostros = new CascadeClassifier("C://opencv//sources//data//haarcascades//haarcascade_frontalface_alt2.xml");
+        CascadeClassifier detectorRostros = new CascadeClassifier(ruta_cascada_detecta_rostros);
         Rect[] facesArray;
         MatOfRect rostros = new MatOfRect();
-        
-        detectorRostros.detectMultiScale(imagen, rostros, 1.1, 2, 0|CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(imagen.height(), imagen.width() ) );
+        detectorRostros.detectMultiScale(imagen, rostros, 1.1, 2, CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(imagen.height(), imagen.width() ) );
         facesArray = rostros.toArray();
-        return facesArray.length >= 1;
+        return facesArray.length;
     }
     
-    public Mat Convert2Gray(Mat imagen)
+    public Mat[] DetectMultiFace(Mat aux)
     {
-        Mat aux = new Mat();
-        Imgproc.cvtColor(imagen, aux, Imgproc.COLOR_BGR2GRAY);
-        return aux;
-    }
-    
-    public Mat Equalize(Mat imagen)
-    {
-        Mat aux = new Mat();
-        Imgproc.equalizeHist(imagen, aux);
-        return aux;
-    }
-    
-    public Mat DetectFace(Mat aux)
-    {
-        //cargando el clasificador en cascada para la deteccion de rostros
-        CascadeClassifier detectorRostros = new CascadeClassifier("C://opencv//sources//data//haarcascades//haarcascade_frontalface_alt2.xml");
+        CascadeClassifier detectorRostros = new CascadeClassifier(ruta_cascada_detecta_rostros);
         Rect[] facesArray;
         MatOfRect rostros = new MatOfRect();
-        Mat faceROI;
-        
-        detectorRostros.detectMultiScale(aux, rostros, 1.1, 2, 0|CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(aux.height(), aux.width() ) );
+        detectorRostros.detectMultiScale(aux, rostros, 1.1, 2, CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(aux.height(), aux.width() ) );
         facesArray = rostros.toArray();
-
-        faceROI = aux.submat(facesArray[0]);
-        //dibujarlas
+        Mat[] faceROI = new Mat[facesArray.length];
+        for(int i = 0; i < facesArray.length; i++)
+        {
+            faceROI[i] = aux.submat(facesArray[i]);
+        }
+        return faceROI;
+    }
+    
+    public Mat DibujaRostro(Mat aux)
+    {
+        CascadeClassifier detectorRostros = new CascadeClassifier(ruta_cascada_detecta_rostros);
+        Rect[] facesArray;
+        MatOfRect rostros = new MatOfRect();        
+        detectorRostros.detectMultiScale(aux, rostros, 1.1, 2, CASCADE_SCALE_IMAGE, new Size(30, 30), new Size(aux.height(), aux.width() ) );
+        facesArray = rostros.toArray();
         for(int i = 0; i < facesArray.length; i++)
         {
             Core.rectangle(aux,
             new Point(facesArray[i].x,facesArray[i].y),
             new Point(facesArray[i].x+facesArray[i].width,facesArray[i].y+facesArray[i].height),
-            new Scalar(123, 213, 23, 220));
+            new Scalar(255,0,0));
         }
-        return faceROI;
+        return aux;
     }
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
+    
+    public Mat Convert2Gray_Equalize(Mat imagen)
+    {
+        Mat aux = new Mat();
+        Imgproc.cvtColor(imagen, aux, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.equalizeHist(aux, aux);
+        return aux;
+    }
+    
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -251,6 +178,11 @@ public class Pruebas extends javax.swing.JPanel {
         jLabel2.setText("Metodos de verificación:");
 
         jButton4.setText("Buscar carpeta");
+        jButton4.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton4ActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -303,30 +235,100 @@ public class Pruebas extends javax.swing.JPanel {
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
         // TODO add your handling code here:
-        ShowFileChoose();
+        Cargar_Modelo();
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         // TODO add your handling code here:
-        ShowFileChoose("archivo");
-        try 
-        {
-            probando_archivo(ruta_archivo);
-        } 
-        catch (IOException ex) 
-        {
-            Logger.getLogger(Pruebas.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        ProbarArchivo();
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
-        ShowFileChoose(1);
-        probando_imagen(ruta_imagen);
+        ProbarImagen();
     }//GEN-LAST:event_jButton1ActionPerformed
 
-    public void ShowFileChoose()
+    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+        // TODO add your handling code here:
+        ProbarCarpeta();
+    }//GEN-LAST:event_jButton4ActionPerformed
+
+    public void ProbarCarpeta()
     {
+        jTextArea1.setText(jTextArea1.getText() + " Leyendo carpeta" + "\n");
+        String path = JOptionPane.showInputDialog(null, "Ingresa la ruta de la carpeta");
+        File f = new File(path);
+        File[] ficheros = f.listFiles();
+        FileWriter escritura = null;
+        PrintWriter pw = null;
+        try
+        {
+            escritura = new FileWriter(path+"\\archivo.txt");
+            pw = new PrintWriter(escritura);
+            for(File fichero : ficheros)
+            {
+                edades = CalculaEdad(fichero.getAbsolutePath());
+                pw.print(fichero.getAbsolutePath());
+                for(Integer edad : edades)
+                {
+                    pw.print(","+edad);
+                    jTextArea1.setText(jTextArea1.getText() + "Las edades calculadas en la foto son: "+ edad + "\n");
+                }    
+                pw.println();
+            }
+            escritura.close();
+        }
+        catch(Exception e)
+        {
+            jTextArea1.setText(jTextArea1.getText() + "Error: " + e.toString() + "\n");
+        }
+    }
+    
+    public void ProbarArchivo()
+    {
+        String cadena = null;
+        String[] separador = null;
+        try
+        {
+            FileReader f = new FileReader(ShowFileChoose("archivo"));
+            BufferedReader b = new BufferedReader(f);
+            while((cadena = b.readLine())!=null)
+            {
+                separador = cadena.split(",");
+                edades = CalculaEdad(separador[0]);
+                for(Integer edad : edades)
+                {
+                    jTextArea1.setText(jTextArea1.getText() + "La edad real es: " + separador[1] + " El resultado estimado es: " + edad + "\n");
+                }
+            }
+        }
+        catch(Exception e)
+        {
+            jTextArea1.setText(jTextArea1.getText() + "Error: " + e.toString() + "\n");
+        }
+    }
+    
+    public void ProbarImagen()
+    {
+        String path = ShowFileChoose(1);
+        edades = CalculaEdad(path);
+        for(Integer edad : edades)
+        {
+            jTextArea1.setText(jTextArea1.getText() + "Las edades calculadas en la foto son: "+ edad + "\n");
+        }
+        MuestraImagen(path);
+    }
+    
+    public void MuestraImagen(String imagen)
+    {
+        Mat aux = Highgui.imread(imagen, Highgui.CV_LOAD_IMAGE_COLOR);
+        Imshow image = new Imshow("Imagen");
+        image.showImage(DibujaRostro(aux));
+    }
+    
+    public void Cargar_Modelo()
+    {
+        jTextArea1.setText(jTextArea1.getText() + "Cargando Modelo de datos... " + "\n");
         File fichero = null;
         JFileChooser fc = new JFileChooser();
         FileNameExtensionFilter filtro = new FileNameExtensionFilter("*.YML", "yml");
@@ -338,12 +340,19 @@ public class Pruebas extends javax.swing.JPanel {
             fichero = fc.getSelectedFile();
             ruta.setText(fichero.getAbsolutePath());
         }
+        faceRecognizer.load(ruta.getText());
+        jTextArea1.setText(jTextArea1.getText() + "Se ha cargado el modelo de datos " + "\n");
+        jButton1.setEnabled(true);
+        jButton2.setEnabled(true);
+        jButton4.setEnabled(true);
     }
     
-    public void ShowFileChoose(String archivo)
+    public String ShowFileChoose(String archivo)
     {
+        String ruta_archivo = null;
         File fichero = null;
         JFileChooser fc = new JFileChooser();
+        FileNameExtensionFilter filtro = new FileNameExtensionFilter("*.TXT", "txt");
         int seleccion = fc.showOpenDialog(this);
         
         if(seleccion == JFileChooser.APPROVE_OPTION) 
@@ -351,10 +360,12 @@ public class Pruebas extends javax.swing.JPanel {
             fichero = fc.getSelectedFile();
             ruta_archivo = fichero.getAbsolutePath();
         }
+        return ruta_archivo;
     }
     
-    public void ShowFileChoose(int numero)
+    public String ShowFileChoose(int numero)
     {
+        String ruta_imagen = null;
         File fichero = null;
         JFileChooser fc = new JFileChooser();
         int seleccion = fc.showOpenDialog(this);
@@ -362,8 +373,9 @@ public class Pruebas extends javax.swing.JPanel {
         if(seleccion == JFileChooser.APPROVE_OPTION) 
         {
             fichero = fc.getSelectedFile();
-            ruta_imagen = fichero.getAbsolutePath();
+            return ruta_imagen = fichero.getAbsolutePath();
         }
+        return ruta_imagen;
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
